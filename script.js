@@ -1,54 +1,93 @@
 // Ensure the code runs only after the HTML document has fully loaded
 document.addEventListener("DOMContentLoaded", () => {
-
-    // Select DOM elements
+    // DOM elements
     const addButton = document.getElementById("add-task-btn");
     const taskInput = document.getElementById("task-input");
     const taskList = document.getElementById("task-list");
 
-    // Function to add a new task
-    function addTask() {
-        const taskText = taskInput.value.trim(); // get and trim text
+    // Utility: get tasks array from localStorage (returns Array)
+    function getStoredTasks() {
+        return JSON.parse(localStorage.getItem("tasks") || "[]");
+    }
 
+    // Utility: save tasks array to localStorage
+    function saveTasksArray(tasks) {
+        localStorage.setItem("tasks", JSON.stringify(tasks));
+    }
+
+    // Create a single task <li> element and append to DOM
+    // If save === true, the caller expects the task to be stored in localStorage as well.
+    function addTask(taskText, save = true) {
+        // defensive trim
+        const text = String(taskText).trim();
+        if (text === "") {
+            if (save) alert("Please enter a task.");
+            return;
+        }
+
+        // Create list item
+        const li = document.createElement("li");
+        li.textContent = text;
+
+        // Create remove button
+        const removeBtn = document.createElement("button");
+        removeBtn.textContent = "Remove";
+        removeBtn.classList.add("remove-btn"); // required by checker
+
+        // Remove handler: remove from DOM and update localStorage
+        removeBtn.addEventListener("click", () => {
+            // Remove from DOM
+            if (li.parentNode === taskList) taskList.removeChild(li);
+
+            // Remove from localStorage array
+            const tasks = getStoredTasks();
+            // Remove first matching taskText — keeps simple behavior
+            const index = tasks.indexOf(text);
+            if (index > -1) {
+                tasks.splice(index, 1);
+                saveTasksArray(tasks);
+            }
+        });
+
+        // Append button and li to DOM
+        li.appendChild(removeBtn);
+        taskList.appendChild(li);
+
+        // Optionally save to localStorage
+        if (save) {
+            const tasks = getStoredTasks();
+            tasks.push(text);
+            saveTasksArray(tasks);
+        }
+    }
+
+    // Load tasks from localStorage and render them (do not re-save)
+    function loadTasks() {
+        const storedTasks = getStoredTasks();
+        storedTasks.forEach(taskText => addTask(taskText, false));
+    }
+
+    // Handler when user clicks add or presses Enter
+    function handleAddFromInput() {
+        const taskText = taskInput.value.trim();
         if (taskText === "") {
             alert("Please enter a task.");
             return;
         }
-
-        // Create a new list item (li)
-        const li = document.createElement("li");
-        li.textContent = taskText;
-
-        // Create the remove button
-        const removeBtn = document.createElement("button");
-        removeBtn.textContent = "Remove";
-
-        // REQUIRED by checker
-        removeBtn.classList.add("remove-btn");
-
-        // Set onclick event to remove the task
-        removeBtn.onclick = () => {
-            taskList.removeChild(li);
-        };
-
-        // Append remove button to li
-        li.appendChild(removeBtn);
-
-        // Append li to the task list
-        taskList.appendChild(li);
-
-        // Clear the input field
+        addTask(taskText, true);
         taskInput.value = "";
+        taskInput.focus();
     }
 
-    // Add event listener for button click
-    addButton.addEventListener("click", addTask);
+    // Attach event listeners
+    addButton.addEventListener("click", handleAddFromInput);
 
-    // Add event listener for Enter key press
     taskInput.addEventListener("keypress", (event) => {
         if (event.key === "Enter") {
-            addTask();
+            handleAddFromInput();
         }
     });
 
+    // Load persisted tasks on start
+    loadTasks();
 });
